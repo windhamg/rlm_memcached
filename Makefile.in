@@ -21,17 +21,15 @@
 #
 #######################################################################
 TARGET      = @targetname@
-SRCS        = rlm_example.c other.c
-HEADERS     = other.h
-RLM_CFLAGS  = @example_cflags@
-RLM_LIBS    = @example_ldflags@
-RLM_INSTALL = install-example
+SRCS        = rlm_memcached.c
+HEADERS     = rlm_memcached.h
+CPPFLAGS = @CPPFLAGS@
+LIBTOOL=./libtool
 
-## this uses the RLM_CFLAGS and RLM_LIBS and SRCS defs to make TARGET.
-#include ../rules.mak
 
-$(LT_OBJS): $(HEADERS)
+rlm_memcached.la: rlm_memcached.lo
+	$(LIBTOOL) --mode=link $(CC) -module  -export-dynamic $(LDFLAGS) -o $@ -rpath @MODULESPATH@
 
-## the rule that RLM_INSTALL tells the parent rules.mak to use.
-install-example:
-	touch .
+rlm_memcached.lo: rlm_memcached.c
+	$(LIBTOOL) --mode=compile $(CC) $(CPPFLAGS) -c $<
+

@@ -3,27 +3,20 @@ AC_INIT(rlm_memcached.c) # change 'example'
 AC_REVISION($Revision$)
 AC_DEFUN(modname,[rlm_memcached]) # change 'example'
 
-AC_ARG_WITH([fr-include],
-  [AS_HELP_STRING([--with-mysql-include-path],
-    [fr includes])],
-  [MYSQL_CFLAGS="$withval"],
-  [MYSQL_CFLAGS=''])
-
-CFLAGS=$CFLAGS" "-I$MYSQL_CFLAGS"/include"
-#CPPFLAGS=$CPPLAGS" "$MYSQL_CFLAGS"/include"
-CPPFLAGS=$CFLAGS
-LDFLAGS=$LDFLAGS" "-L$MYSQL_CFLAGS"/lib"
-
+AC_ARG_WITH([fr-path],
+  [AS_HELP_STRING([--with-frpath], [FreeRADIUS Path])],
+  [CPPFLAGS=$CPPFLAGS"-I$withval/include"; LDFLAGS=$LDFLAGS"-L$withval/lib"; MODULESPATH="$withval/lib"],
+  [])
 
 AC_CHECK_HEADER(freeradius/radius.h, [], [AC_MSG_ERROR([Couldnt find radius.h] )])
 AC_CHECK_HEADER(freeradius/radiusd.h, [], [AC_MSG_ERROR([Couldnt find radiusd.h] )])
 
-AC_CHECK_LIB(pthread, pthread_mutex_init, LDFLAGS=$LDFLAGS" -lpthread -lltdl", AC_MSG_ERROR(pthread library needed!))
+AC_CHECK_LIB(pthread, pthread_mutex_init, LDFLAGS=$LDFLAGS" -lpthread -lltdl", AC_MSG_ERROR(Can not find lib pthread!))
 
-AC_CHECK_LIB(freeradius-radius,fr_heap_create, [], [AC_MSG_ERROR([Ko])])
+AC_CHECK_LIB(freeradius-radius,fr_heap_create, [], [AC_MSG_ERROR([Linker can''t find freeradius shared libs])])
 
-
-AC_SUBST([MYSQL_CFLAGS])
+AC_SUBST([MODULESPATH])
+AC_SUBST([CPPFLAGS])
 
 if test x$with_[]modname != xno; then
 

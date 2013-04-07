@@ -21,17 +21,15 @@
 #
 #######################################################################
 TARGET      = rlm_memcached
-SRCS        = rlm_example.c other.c
-HEADERS     = other.h
-RLM_CFLAGS  =  -I/usr/include
-RLM_LIBS    =  -lc
-RLM_INSTALL = install-example
+SRCS        = rlm_memcached.c
+HEADERS     = rlm_memcached.h
+CPPFLAGS = -I/opt/freeradius/include
+LIBTOOL=./libtool
 
-## this uses the RLM_CFLAGS and RLM_LIBS and SRCS defs to make TARGET.
-#include ../rules.mak
 
-$(LT_OBJS): $(HEADERS)
+rlm_memcached.la: rlm_memcached.lo
+	$(LIBTOOL) --mode=link $(CC) -release 1.0 -module  -export-dynamic $(LDFLAGS) -o $@ -rpath /opt/freeradius/lib
 
-## the rule that RLM_INSTALL tells the parent rules.mak to use.
-install-example:
-	touch .
+rlm_memcached.lo: rlm_memcached.c
+	$(LIBTOOL) --mode=compile $(CC) $(CPPFLAGS) -c $<
+

@@ -21,6 +21,12 @@
  * Copyright 2000  your name <your address>
  */
 
+#include <freeradius/ident.h>
+#include <freeradius/radiusd.h>
+#include <freeradius/modules.h>
+
+RCSID("$Id$")
+
 typedef struct myconf {
 	char *user;
 	char *password;
@@ -28,13 +34,6 @@ typedef struct myconf {
 } myconf;
 
 
-
-//#include <freeradius-devel/ident.h>
-#include <include/ident.h>
-RCSID("$Id$")
-
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/modules.h>
 
 /*
  *	Define a structure for our module configuration.
