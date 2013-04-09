@@ -3379,15 +3379,11 @@ fi
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_freeradius_radius_fr_heap_create" >&5
 $as_echo "$ac_cv_lib_freeradius_radius_fr_heap_create" >&6; }
 if test "x$ac_cv_lib_freeradius_radius_fr_heap_create" = xyes; then :
-  cat >>confdefs.h <<_ACEOF
-#define HAVE_LIBFREERADIUS_RADIUS 1
-_ACEOF
-
-  LIBS="-lfreeradius-radius $LIBS"
-
+  LDFLAGS=$LDFLAGS" -lfreeradius-radius"
 else
   as_fn_error $? "Linker can''t find freeradius shared libs" "$LINENO" 5
 fi
+
 
 
 

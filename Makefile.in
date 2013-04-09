@@ -5,10 +5,11 @@ HEADERS     = rlm_memcached.h
 CPPFLAGS = @CPPFLAGS@
 RELEASE = $(shell cat VERSION)
 LIBTOOL=./libtool
+LDFLAGS=@LDFLAGS@
 
 
 rlm_memcached.la: rlm_memcached.lo
-	$(LIBTOOL) --mode=link $(CC) -release $(RELEASE) -module  -export-dynamic $(LDFLAGS) -o $@ -rpath @MODULESPATH@
+	$(LIBTOOL) --mode=link $(CC) -release $(RELEASE) -module -export-dynamic -o $@ -rpath @MODULESPATH@ $<
 
 rlm_memcached.lo: rlm_memcached.c
 	$(LIBTOOL) --mode=compile $(CC) $(CPPFLAGS) -c $<
