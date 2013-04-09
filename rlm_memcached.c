@@ -1,5 +1,5 @@
 /*
- * rlm_example.c
+ * rlm_memcached.c
  *
  * Version:	$Id$
  *
@@ -18,7 +18,7 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
  * Copyright 2000,2006  The FreeRADIUS server project
- * Copyright 2000  your name <your address>
+ * Copyright 2000  your name info@simonecaruso.com
  */
 
 #include <freeradius/ident.h>
@@ -34,55 +34,20 @@ typedef struct myconf {
 } myconf;
 
 
-
+/* EXAMPLE CONFIG */
 /*
- *	Define a structure for our module configuration.
- *
- *	These variables do not need to be in a structure, but it's
- *	a lot cleaner to do so, and a pointer to the structure can
- *	be used as the instance handle.
- */
-typedef struct rlm_example_t {
-	int		boolean;
-	int		value;
-	char		*string;
-	uint32_t	ipaddr;
-} rlm_example_t;
-
-/*
- *	A mapping of configuration file names to internal variables.
- *
- *	Note that the string is dynamically allocated, so it MUST
- *	be freed.  When the configuration file parse re-reads the string,
- *	it free's the old one, and strdup's the new one, placing the pointer
- *	to the strdup'd string into 'config.string'.  This gets around
- *	buffer over-flows.
- */
 static const CONF_PARSER module_config[] = {
   { "integer", PW_TYPE_INTEGER,    offsetof(rlm_example_t,value), NULL,   "1" },
   { "boolean", PW_TYPE_BOOLEAN,    offsetof(rlm_example_t,boolean), NULL, "no"},
   { "string",  PW_TYPE_STRING_PTR, offsetof(rlm_example_t,string), NULL,  NULL},
   { "ipaddr",  PW_TYPE_IPADDR,     offsetof(rlm_example_t,ipaddr), NULL,  "*" },
 
-  { NULL, -1, 0, NULL, NULL }		/* end the list */
+  { NULL, -1, 0, NULL, NULL }
 };
 
-
-/*
- *	Do any per-module initialization that is separate to each
- *	configured instance of the module.  e.g. set up connections
- *	to external databases, read configuration files, set up
- *	dictionary entries, etc.
- *
- *	If configuration information is given in the config section
- *	that must be referenced in later calls, store a handle to it
- *	in *instance otherwise put a null pointer there.
- */
-static int example_instantiate(CONF_SECTION *conf, void **instance)
-{
-	/*
-	rlm_example_t *data;
 */
+static int memcached_instantiate(CONF_SECTION *conf, void **instance)
+{
 
 	myconf *root, *p ;
 	root = rad_malloc(sizeof(*p));
@@ -111,7 +76,7 @@ static int example_instantiate(CONF_SECTION *conf, void **instance)
  *	from the database. The authentication code only needs to check
  *	the password, the rest is done here.
  */
-static int example_authorize(void *instance, REQUEST *request)
+static int memcached_authorize(void *instance, REQUEST *request)
 {
 	VALUE_PAIR *state;
 	VALUE_PAIR *reply;
@@ -160,7 +125,7 @@ static int example_authorize(void *instance, REQUEST *request)
 /*
  *	Authenticate the user with the given password.
  */
-static int example_authenticate(void *instance, REQUEST *request)
+static int memcached_authenticate(void *instance, REQUEST *request)
 {
 	char *p ;
 	myconf *mc = instance;
@@ -198,7 +163,7 @@ static int example_authenticate(void *instance, REQUEST *request)
 /*
  *	Massage the request before recording it or proxying it
  */
-static int example_preacct(void *instance, REQUEST *request)
+static int memcached_preacct(void *instance, REQUEST *request)
 {
 	/* quiet the compiler */
 	instance = instance;
@@ -210,7 +175,7 @@ static int example_preacct(void *instance, REQUEST *request)
 /*
  *	Write accounting information to this modules database.
  */
-static int example_accounting(void *instance, REQUEST *request)
+static int memcached_accounting(void *instance, REQUEST *request)
 {
 	/* quiet the compiler */
 	instance = instance;
@@ -219,17 +184,7 @@ static int example_accounting(void *instance, REQUEST *request)
 	return RLM_MODULE_OK;
 }
 
-/*
- *	See if a user is already logged in. Sets request->simul_count to the
- *	current session count for this user and sets request->simul_mpp to 2
- *	if it looks like a multilink attempt based on the requested IP
- *	address, otherwise leaves request->simul_mpp alone.
- *
- *	Check twice. If on the first pass the user exceeds his
- *	max. number of logins, do a second pass and validate all
- *	logins by querying the terminal server (using eg. SNMP).
- */
-static int example_checksimul(void *instance, REQUEST *request)
+static int memcached_checksimul(void *instance, REQUEST *request)
 {
   instance = instance;
 
@@ -243,7 +198,7 @@ static int example_checksimul(void *instance, REQUEST *request)
  *	Only free memory we allocated.  The strings allocated via
  *	cf_section_parse() do not need to be freed.
  */
-static int example_detach(void *instance)
+static int memcached_detach(void *instance)
 {
 	free(instance);
 	return 0;
@@ -258,15 +213,15 @@ static int example_detach(void *instance)
  *	The server will then take care of ensuring that the module
  *	is single-threaded.
  */
-module_t rlm_example = {
+module_t rlm_memcached = {
 	RLM_MODULE_INIT,
-	"example",
+	"memcached",
 	RLM_TYPE_THREAD_SAFE,		/* type */
-	example_instantiate,		/* instantiation */
-	example_detach,			/* detach */
+	memcached_instantiate,		/* instantiation */
+	memcached_detach,			/* detach */
 	{
-		example_authenticate,	/* authentication */
-		example_authorize,	/* authorization */
+		memcached_authenticate,	/* authentication */
+		memcached_authorize,	/* authorization */
 		NULL,	/* preaccounting */
 		NULL,	/* accounting */
 		NULL,	/* checksimul */
