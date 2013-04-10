@@ -12,6 +12,7 @@ AC_CHECK_HEADER(freeradius/radius.h, [], [AC_MSG_ERROR([Couldnt find radius.h] )
 AC_CHECK_HEADER(freeradius/radiusd.h, [], [AC_MSG_ERROR([Couldnt find radiusd.h] )])
 
 AC_CHECK_LIB(pthread, pthread_mutex_init, LDFLAGS=$LDFLAGS" -lpthread -lltdl", AC_MSG_ERROR(Can not find lib pthread!))
+AC_CHECK_LIB(memcached, memcached_create, [LDFLAGS=$LDFLAGS" -lmemcached "], AC_MSG_ERROR(Can not find libmemcached!))
 
 AC_CHECK_LIB(freeradius-radius,fr_heap_create, [LDFLAGS=$LDFLAGS" -lfreeradius-radius"], [AC_MSG_ERROR([Linker can''t find freeradius shared libs])])
 

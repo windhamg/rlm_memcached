@@ -24,48 +24,49 @@
 #include <freeradius/ident.h>
 #include <freeradius/radiusd.h>
 #include <freeradius/modules.h>
+#include <libmemcached/memcached.h>
 
 RCSID("$Id$")
 
-typedef struct myconf {
-	char *user;
-	char *password;
-	struct myconf *next;
-} myconf;
+typedef struct rlm_memcached_t {
+	char *server_addr;
+	memcached_st *st;
+} rlm_memcached_t;
 
 
 /* EXAMPLE CONFIG */
-/*
-static const CONF_PARSER module_config[] = {
-  { "integer", PW_TYPE_INTEGER,    offsetof(rlm_example_t,value), NULL,   "1" },
-  { "boolean", PW_TYPE_BOOLEAN,    offsetof(rlm_example_t,boolean), NULL, "no"},
-  { "string",  PW_TYPE_STRING_PTR, offsetof(rlm_example_t,string), NULL,  NULL},
-  { "ipaddr",  PW_TYPE_IPADDR,     offsetof(rlm_example_t,ipaddr), NULL,  "*" },
 
+static const CONF_PARSER module_config[] = {
+  { "address",  PW_TYPE_STRING_PTR, offsetof(rlm_memcached_t, server_addr), NULL,  NULL},
   { NULL, -1, 0, NULL, NULL }
 };
 
-*/
 static int memcached_instantiate(CONF_SECTION *conf, void **instance)
 {
+	rlm_memcached_t *config = (rlm_memcached_t *)malloc(sizeof(rlm_memcached_t));
 
-	myconf *root, *p ;
-	root = rad_malloc(sizeof(*p));
-	if (!root) {
-		return -1;
-	}
-	p = root;
-	p->user = "pippo";
-	p->password  = "pippo";
-	p->next = rad_malloc(sizeof(*p));
-	p = p->next;
-	p->next = NULL;
-	p->user = "simone";
-	p->password = "simone";
+	memcached_return rc;
+	memcached_server_st *server_list = NULL;
+	size_t len;
+	void *ret;
 
-	DEBUG("EXAMPLE: INSTANZIATO!");
 
-	*instance = root;
+ 	config->st = memcached_create(NULL);
+
+	server_list = memcached_server_list_append(server_list, "127.0.0.1", 11211, &rc);
+	memcached_server_push(config->st, server_list);
+	memcached_server_list_free(server_list);
+
+
+	ret = memcached_get(config->st, "simone", strlen("simone"), &len, 0, &rc);
+	if(ret)
+		printf("Res: %s\n", (char*)ret);
+	else
+		printf("Err: %s\n", memcached_last_error_message(config->st));
+
+
+
+	*instance = config;
 
 	return 0;
 }
@@ -83,42 +84,6 @@ static int memcached_authorize(void *instance, REQUEST *request)
 	VALUE_PAIR my_pl,*vp;
 	VALUE_PAIR	*namepair;
 
-	myconf *conf = instance;
-
-	int found = 0;
-	DEBUG("EXAMPLE: authorized sec");
-
-
-	
-
-	namepair = request->username;
-	my_pl.name = namepair ? (char *) namepair->vp_strvalue : "NONE";
-	
-	do{
-		if(strcmp(conf->user, my_pl.name) == 0){
-			found=1;
-			break;
-		}
-		conf= conf->next;
-	}while(conf);
-	
-	if(!found){
-		DEBUG("NO USER FOUND");
-		return RLM_MODULE_FAIL;
-	}
-	DEBUG("USERNMANE: %s", my_pl.name);
-
-	vp = pairmake("Cleartext-Password", conf->password, T_OP_SET);
-	if (!vp)
-		return RLM_MODULE_FAIL;
-
-	pairmove(&request->config_items, &vp);
-	pairfree(&vp);
-
-	pairdelete(&request->reply->vps, PW_FALL_THROUGH);
-	
-	//pairadd(&request->config_items, pairmake("Auth-Type", "PAP", T_OP_EQ));
-
 	return RLM_MODULE_OK;
 }
 
@@ -128,7 +93,7 @@ static int memcached_authorize(void *instance, REQUEST *request)
 static int memcached_authenticate(void *instance, REQUEST *request)
 {
 	char *p ;
-	myconf *mc = instance;
+
 	/* quiet the compiler */
 	instance = instance;
 	request = request;
@@ -146,14 +111,14 @@ static int memcached_authenticate(void *instance, REQUEST *request)
 	}while(mc->next);
 */
 
-	if(rad_digest_cmp(request->config_items->vp_strvalue,
+/*	if(rad_digest_cmp(request->config_items->vp_strvalue,
 				request->password->vp_strvalue,
 				request->config_items->length) == 0){
 		DEBUG ("AUTH OK");
 		return RLM_MODULE_OK;
 	}
-
-	DEBUG("EXAMPLE passwd: %s", p);
+*/
+	//DEBUG("EXAMPLE passwd: %s", p);
 
 	
 
