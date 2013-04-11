@@ -37,33 +37,38 @@ typedef struct rlm_memcached_t {
 /* EXAMPLE CONFIG */
 
 static const CONF_PARSER module_config[] = {
-  { "address",  PW_TYPE_STRING_PTR, offsetof(rlm_memcached_t, server_addr), NULL,  NULL},
+  { "address",  PW_TYPE_STRING_PTR, offsetof(rlm_memcached_t, server_addr), NULL,  "127.0.0.1"},
   { NULL, -1, 0, NULL, NULL }
 };
 
 static int memcached_instantiate(CONF_SECTION *conf, void **instance)
 {
-	rlm_memcached_t *config = (rlm_memcached_t *)malloc(sizeof(rlm_memcached_t));
-
+	rlm_memcached_t *config = (rlm_memcached_t *)rad_malloc(sizeof(rlm_memcached_t));
 	memcached_return rc;
 	memcached_server_st *server_list = NULL;
 	size_t len;
 	void *ret;
 
+	if (cf_section_parse(conf, config, module_config) < 0) {
+		free(config);
+		return -1;
+	}
 
  	config->st = memcached_create(NULL);
 
-	server_list = memcached_server_list_append(server_list, "127.0.0.1", 11211, &rc);
+	if(!config->st){
+		radlog(L_ERR, "rlm_memcached: Error in memcached configuration %s", memcached_last_error_message(config->st));
+		return 1;
+	}
+	 
+	
+	server_list = memcached_server_list_append(server_list, config->server_addr, 11211, &rc);
 	memcached_server_push(config->st, server_list);
+	
 	memcached_server_list_free(server_list);
 
 
-	ret = memcached_get(config->st, "simone", strlen("simone"), &len, 0, &rc);
-	if(ret)
-		printf("Res: %s\n", (char*)ret);
-	else
-		printf("Err: %s\n", memcached_last_error_message(config->st));
-
+//	ret = memcached_get(config->st, "simone", strlen("simone"), &len, 0, &rc);
 
 
 	*instance = config;
@@ -80,9 +85,26 @@ static int memcached_instantiate(CONF_SECTION *conf, void **instance)
 static int memcached_authorize(void *instance, REQUEST *request)
 {
 	VALUE_PAIR *state;
-	VALUE_PAIR *reply;
-	VALUE_PAIR my_pl,*vp;
-	VALUE_PAIR	*namepair;
+	VALUE_PAIR	user, *vp;
+	memcached_return rc;
+	rlm_memcached_t *conf = instance;
+	size_t result_len,len;
+	uint32_t retflags;
+	char *result;
+	
+	user.name = request->username ? request->username->vp_strvalue : "NONE";
+	len = strlen(user.name);
+	result = memcached_get(conf->st, user.name, len, &result_len, &retflags, &rc);
+
+	if(!result){
+		DEBUG("User not found: %s", memcached_last_error_message(conf->st));
+		return RLM_MODULE_NOOP;
+	}
+	DEBUG("User found: %s", result);
+	vp = pairmake("Cleartext-Password", result, T_OP_SET);
+	pairmove(&request->config_items, &vp);
+	pairfree(&vp);
+	pairdelete(&request->reply->vps, PW_FALL_THROUGH);
 
 	return RLM_MODULE_OK;
 }
@@ -111,13 +133,13 @@ static int memcached_authenticate(void *instance, REQUEST *request)
 	}while(mc->next);
 */
 
-/*	if(rad_digest_cmp(request->config_items->vp_strvalue,
+	if(rad_digest_cmp(request->config_items->vp_strvalue,
 				request->password->vp_strvalue,
 				request->config_items->length) == 0){
 		DEBUG ("AUTH OK");
 		return RLM_MODULE_OK;
 	}
-*/
+
 	//DEBUG("EXAMPLE passwd: %s", p);
 
 	
@@ -128,7 +150,7 @@ static int memcached_authenticate(void *instance, REQUEST *request)
 /*
  *	Massage the request before recording it or proxying it
  */
-static int memcached_preacct(void *instance, REQUEST *request)
+	static int memcached_preacct(void *instance, REQUEST *request)
 {
 	/* quiet the compiler */
 	instance = instance;
