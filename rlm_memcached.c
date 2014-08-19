@@ -30,6 +30,7 @@ RCSID("$Id$")
 
 typedef struct rlm_memcached_t {
 	char *server_addr;
+	int otp_mode;
 	memcached_st *st;
 } rlm_memcached_t;
 
@@ -38,6 +39,7 @@ typedef struct rlm_memcached_t {
 
 static const CONF_PARSER module_config[] = {
   { "address",  PW_TYPE_STRING_PTR, offsetof(rlm_memcached_t, server_addr), NULL,  "127.0.0.1"},
+  { "otp" , PW_TYPE_BOOLEAN, offsetof(rlm_memcached_t, otp_mode), NULL, "no"},
   { NULL, -1, 0, NULL, NULL }
 };
 
@@ -90,7 +92,9 @@ static int memcached_authorize(void *instance, REQUEST *request)
 	rlm_memcached_t *conf = instance;
 	size_t result_len,len;
 	uint32_t retflags;
+	time_t exptime;
 	char *result;
+	char *timestamp;
 	
 	user.name = request->username ? request->username->vp_strvalue : "NONE";
 	len = strlen(user.name);
@@ -100,17 +104,33 @@ static int memcached_authorize(void *instance, REQUEST *request)
 		DEBUG("User not found: %s", memcached_last_error_message(conf->st));
 		return RLM_MODULE_NOOP;
 	}
+	if (conf->otp_mode && ((timestamp = strstr(result, "\t")) != NULL) {
+		exptime = (time_t)atol(++timestamp);
+		if (exptime <= time()) {
+			DEBUG("OTP expired");
+			return RLM_MODULE_OK;
+		}
+	}
 	DEBUG("User found: %s", result);
 	vp = pairmake("Cleartext-Password", result, T_OP_SET);
 	pairmove(&request->config_items, &vp);
 	pairfree(&vp);
 	pairdelete(&request->reply->vps, PW_FALL_THROUGH);
 
+	/* delete OTP creds from memcache if in OTP mode */
+	if (conf->otp_mode) {
+		result = memcached_delete(conf->st, user.name, len, (time_t)0);
+		if(!result) {
+			DEBUG("User not found on OTP delete: %s", memcached_last_error_message(conf->st));
+		}
+	}
+
 	return RLM_MODULE_OK;
 }
 
 /*
- *	Authenticate the user with the given password.
+ *	Authenti
+ cate the user with the given password.
  */
 static int memcached_authenticate(void *instance, REQUEST *request)
 {
